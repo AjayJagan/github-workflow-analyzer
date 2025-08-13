@@ -38,7 +38,7 @@ def get_target_org():
 
 def main():
     """Main function for GitHub Action execution."""
-    print("🚀 Starting GitHub Workflow Analysis...")
+    print("Starting GitHub Workflow Analysis...")
     
     # Configuration
     ANALYSIS_DAYS = 15
@@ -48,16 +48,16 @@ def main():
     # Get GitHub token from environment
     github_token = os.getenv('GITHUB_TOKEN')
     if not github_token:
-        print("❌ GITHUB_TOKEN not found in environment")
+        print("ERROR: GITHUB_TOKEN not found in environment")
         sys.exit(1)
     
     # Get target organization to analyze
     org = get_target_org()
     if not org:
-        print("❌ Could not determine target GitHub organization")
+        print("ERROR: Could not determine target GitHub organization")
         sys.exit(1)
     
-    print(f"🔍 Analyzing organization: {org}")
+    print(f"Analyzing organization: {org}")
     
     try:
         # Initialize components
@@ -66,16 +66,16 @@ def main():
         dashboard_gen = DashboardGenerator(f"{org} - Workflow Performance Dashboard")
         
         # Discover repositories in the organization
-        print("🔎 Discovering repositories...")
+        print("Discovering repositories...")
         repos = github_client.get_organization_repositories(org, '*')
         
         # Safety limit for GitHub Actions
         MAX_REPOS = 300
         if len(repos) > MAX_REPOS:
-            print(f"⚠️  Found {len(repos)} repositories, limiting to {MAX_REPOS} for performance")
+            print(f"WARNING: Found {len(repos)} repositories, limiting to {MAX_REPOS} for performance")
             repos = repos[:MAX_REPOS]
         
-        print(f"📊 Analyzing {len(repos)} repositories...")
+        print(f"Analyzing {len(repos)} repositories...")
         
         # Collect workflow runs
         all_runs = []
@@ -84,33 +84,30 @@ def main():
             try:
                 runs = github_client.get_all_repository_runs(repo, ANALYSIS_DAYS)
                 all_runs.extend(runs)
-                print(f"  ✓ Found {len(runs)} workflow runs")
+                print(f"  Found {len(runs)} workflow runs")
             except Exception as e:
-                print(f"  ✗ Error: {e}")
+                print(f"  Error: {e}")
         
         if not all_runs:
-            print("❌ No workflow runs found")
+            print("ERROR: No workflow runs found")
             sys.exit(1)
         
-        print(f"📈 Analyzing {len(all_runs)} total workflow runs...")
+        print(f"Analyzing {len(all_runs)} total workflow runs...")
         
         # Perform analysis
         stats = analyzer.analyze_workflows(all_runs)
         repo_summary = analyzer.get_repository_summary(stats)
-        trends = analyzer.get_trend_analysis(all_runs, ANALYSIS_DAYS)
-        patterns = analyzer.get_workflow_patterns(stats)
         
         # Generate dashboard
-        print("🎨 Generating dashboard...")
-        charts = dashboard_gen.generate_charts(stats, repo_summary, trends, patterns)
-        summary = dashboard_gen.generate_summary_stats(stats, repo_summary, trends)
+        print("Generating dashboard...")
+        charts = dashboard_gen.generate_charts(stats, repo_summary, {}, {})
+        summary = dashboard_gen.generate_summary_stats(stats, repo_summary, {})
         
         # Render HTML template
         template_dir = Path(__file__).parent / 'templates'
         env = Environment(loader=FileSystemLoader(template_dir))
         template = env.get_template('dashboard.html')
         
-        max_score = max([s.combined_score for s in stats]) if stats else 1
         repositories = list(set(s.repository for s in stats))
         
         html_content = template.render(
@@ -118,8 +115,7 @@ def main():
             charts=charts,
             summary=summary,
             workflows=stats,
-            repositories=repositories,
-            max_score=max_score
+            repositories=repositories
         )
         
         # Save output for GitHub Pages
@@ -127,25 +123,8 @@ def main():
         with open(OUTPUT_PATH, 'w', encoding='utf-8') as f:
             f.write(html_content)
         
-        # Print summary
-        print(f"\n🎉 Analysis Complete!")
-        print(f"📊 Total Workflows: {len(stats)}")
-        print(f"🏢 Repositories: {len(repo_summary)}")
-        print(f"🔥 Problematic Workflows: {len([s for s in stats if s.combined_score > 5])}")
-        print(f"📁 Dashboard saved to: {OUTPUT_PATH}")
-        
-        # Display top problematic workflows
-        problematic = [s for s in stats if s.combined_score > 5]
-        if problematic:
-            print(f"\n🚨 Top 5 Problematic Workflows:")
-            for i, workflow in enumerate(sorted(problematic, key=lambda x: x.combined_score, reverse=True)[:5], 1):
-                print(f"  {i}. {workflow.repository}: {workflow.workflow_name}")
-                print(f"     Duration: {workflow.avg_duration_minutes:.1f}min, Frequency: {workflow.frequency_score:.1f}/day")
-        
-        print(f"\n🌐 Dashboard will be available at: https://{org.lower()}.github.io/workflow-performance/")
-        
     except Exception as e:
-        print(f"❌ Error during analysis: {e}")
+        print(f"ERROR: Error during analysis: {e}")
         sys.exit(1)
 
 

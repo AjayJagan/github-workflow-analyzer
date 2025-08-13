@@ -1,6 +1,6 @@
-from typing import List, Dict, Tuple
-from datetime import datetime, timedelta
-from collections import defaultdict, Counter
+from typing import List, Dict
+from datetime import datetime
+from collections import defaultdict
 from dataclasses import dataclass
 from github_client import WorkflowRun
 
@@ -15,8 +15,6 @@ class WorkflowStats:
     min_duration_minutes: float
     success_rate: float
     frequency_score: float
-    duration_score: float
-    combined_score: float
     trigger_events: List[str]
     recent_runs: List[WorkflowRun]
     # New trigger analysis fields
@@ -64,19 +62,6 @@ class WorkflowAnalyzer:
             if trigger_analysis['is_pr_triggered'] or trigger_analysis['is_push_triggered']:
                 enhanced_frequency_score *= 1.5  # Boost score for PR/push triggered workflows
             
-            # Calculate duration score (how much it exceeds threshold)
-            duration_score = max(0, avg_duration - self.duration_threshold_minutes)
-            
-            # Enhanced combined score for prioritization
-            # PR/Push triggered workflows get higher priority if they're slow
-            trigger_multiplier = 1.0
-            if trigger_analysis['is_pr_triggered'] and avg_duration > self.duration_threshold_minutes:
-                trigger_multiplier = 1.3  # High priority for slow PR workflows
-            elif trigger_analysis['is_push_triggered'] and avg_duration > self.duration_threshold_minutes:
-                trigger_multiplier = 1.2  # Medium-high priority for slow push workflows
-            
-            combined_score = ((duration_score * 0.6) + (enhanced_frequency_score * 0.4)) * trigger_multiplier
-            
             # Determine optimization priority
             optimization_priority = self._determine_optimization_priority(
                 avg_duration, enhanced_frequency_score, trigger_analysis
@@ -97,8 +82,6 @@ class WorkflowAnalyzer:
                 min_duration_minutes=min_duration,
                 success_rate=100.0,  # We only analyze successful runs
                 frequency_score=enhanced_frequency_score,
-                duration_score=duration_score,
-                combined_score=combined_score,
                 trigger_events=events,
                 recent_runs=recent_runs,
                 is_pr_triggered=trigger_analysis['is_pr_triggered'],
@@ -110,23 +93,14 @@ class WorkflowAnalyzer:
             
             stats.append(workflow_stat)
         
-        # Sort by combined score (highest impact workflows first)
-        return sorted(stats, key=lambda x: x.combined_score, reverse=True)
-    
-    def filter_problematic_workflows(self, stats: List[WorkflowStats]) -> List[WorkflowStats]:
-        """Filter workflows that have meaningful optimization impact."""
-        return [
-            stat for stat in stats
-            if (
-                # Critical: PR/Push workflows that block developers
-                (stat.is_pr_triggered and stat.avg_duration_minutes > 5) or
-                (stat.is_push_triggered and stat.avg_duration_minutes > 5) or
-                # High impact: Extremely slow workflows regardless of trigger
-                stat.avg_duration_minutes > 15 or
-                # Resource hogs: High frequency + moderate duration
-                (stat.frequency_score > 10 and stat.avg_duration_minutes > 5)
-            )
-        ]
+        # Sort by priority (critical > high > medium > low), then by duration (longest first within same priority)
+        def sort_key(workflow):
+            priority_order = {'critical': 4, 'high': 3, 'medium': 2, 'low': 1}
+            priority_score = priority_order.get(workflow.optimization_priority, 0)
+            # Return negative priority so higher priority comes first, positive duration so longer comes first
+            return (-priority_score, -workflow.avg_duration_minutes)
+        
+        return sorted(stats, key=sort_key)
     
     def get_repository_summary(self, stats: List[WorkflowStats]) -> Dict[str, Dict]:
         """Get summary statistics by repository."""
@@ -145,13 +119,12 @@ class WorkflowAnalyzer:
             repo_stats[repo]['workflows'].append(stat)
             
             if (
-                # Critical: PR/Push workflows that block developers
-                (stat.is_pr_triggered and stat.avg_duration_minutes > 5) or
-                (stat.is_push_triggered and stat.avg_duration_minutes > 5) or
-                # High impact: Extremely slow workflows regardless of trigger
-                stat.avg_duration_minutes > 15 or
-                # Resource hogs: High frequency + moderate duration
-                (stat.frequency_score > 10 and stat.avg_duration_minutes > 5)
+                # Most impactful: Frequent (PR/Push) workflows that are slow (>10min)
+                ((stat.is_pr_triggered or stat.is_push_triggered) and stat.avg_duration_minutes > 10) or
+                # Also include: Frequent workflows that are moderately slow (>5min)
+                ((stat.is_pr_triggered or stat.is_push_triggered) and stat.avg_duration_minutes > 5) or
+                # Also include: Extremely slow workflows regardless of trigger (>15min)
+                stat.avg_duration_minutes > 15
             ):
                 repo_stats[repo]['problematic_workflows'] += 1
         
@@ -163,33 +136,20 @@ class WorkflowAnalyzer:
         return dict(repo_stats)
     
     def get_trend_analysis(self, runs: List[WorkflowRun], days: int = 15) -> Dict:
-        """Analyze trends over time."""
-        # Group runs by day
-        daily_runs = defaultdict(list)
-        daily_durations = defaultdict(list)
-        
-        for run in runs:
-            day = run.created_at.date()
-            daily_runs[day].append(run)
-            daily_durations[day].append(run.duration_seconds / 60)
-        
-        # Calculate daily statistics
-        trend_data = []
-        for day in sorted(daily_runs.keys()):
-            avg_duration = sum(daily_durations[day]) / len(daily_durations[day])
-            trend_data.append({
-                'date': day.isoformat(),
-                'runs_count': len(daily_runs[day]),
-                'avg_duration_minutes': avg_duration,
-                'max_duration_minutes': max(daily_durations[day]),
-                'workflows': len(set(r.workflow_name for r in daily_runs[day]))
-            })
-        
+        """Analyze trends over time (kept for backward compatibility)."""
         return {
-            'daily_trends': trend_data,
+            'daily_trends': [],
             'total_analysis_days': days,
             'total_runs': len(runs),
-            'total_workflows': len(set(r.workflow_name for r in runs))
+            'total_workflows': len(set(r.workflow_name for r in runs)) if runs else 0
+        }
+    
+    def get_workflow_patterns(self, stats: List[WorkflowStats]) -> Dict:
+        """Analyze patterns in workflow triggers and timing (kept for backward compatibility)."""
+        return {
+            'trigger_events': {},
+            'hourly_patterns': {},
+            'peak_hours': []
         }
     
     def _calculate_days_span(self, runs: List[WorkflowRun]) -> int:
@@ -202,28 +162,6 @@ class WorkflowAnalyzer:
         max_date = max(dates)
         
         return max((max_date - min_date).days, 1)
-    
-    def get_workflow_patterns(self, stats: List[WorkflowStats]) -> Dict:
-        """Analyze patterns in workflow triggers and timing."""
-        event_patterns = Counter()
-        hourly_patterns = defaultdict(list)
-        
-        for stat in stats:
-            for run in stat.recent_runs:
-                event_patterns[run.event] += 1
-                hour = run.created_at.hour
-                hourly_patterns[hour].append(run.duration_seconds / 60)
-        
-        # Calculate average duration by hour
-        hourly_avg = {}
-        for hour, durations in hourly_patterns.items():
-            hourly_avg[hour] = sum(durations) / len(durations)
-        
-        return {
-            'trigger_events': dict(event_patterns),
-            'hourly_patterns': hourly_avg,
-            'peak_hours': sorted(hourly_avg.items(), key=lambda x: x[1], reverse=True)[:5]
-        }
     
     def _analyze_workflow_triggers(self, runs: List[WorkflowRun]) -> Dict[str, any]:
         """Analyze triggers from workflow runs."""
@@ -262,31 +200,34 @@ class WorkflowAnalyzer:
         return analysis
     
     def _determine_optimization_priority(self, avg_duration: float, frequency_score: float, trigger_analysis: Dict) -> str:
-        """Determine optimization priority based on trigger context and duration impact."""
+        """
+        Determine optimization priority based on the most impactful workflows:
+        - Frequently run workflows (PR/Push triggered) that take >10 minutes
+        - Focus on workflows that directly impact developer productivity
+        """
         
         is_pr_triggered = trigger_analysis.get('is_pr_triggered', False)
         is_push_triggered = trigger_analysis.get('is_push_triggered', False)
+        is_frequent = is_pr_triggered or is_push_triggered  # These run frequently
         
-        # CRITICAL: Workflows that directly block developer velocity
-        if is_pr_triggered and avg_duration > 10:  # PR workflows >10min block developers
+        # CRITICAL: Most impactful workflows - frequent (PR/Push) + slow (>10min)
+        # These directly block developers and deployments
+        if is_frequent and avg_duration > 10:
             return "critical"
-        if is_push_triggered and avg_duration > 10:  # Push to main >10min blocks deployments
-            return "critical"
         
-        # HIGH: Workflows that create developer friction + extremely slow workflows
-        if is_pr_triggered and avg_duration > 5:  # PR workflows >5min still create friction
+        # HIGH: Either frequent workflows that are moderately slow (>5min)
+        # OR very slow workflows regardless of frequency (>15min)
+        if is_frequent and avg_duration > 5:
             return "high"
-        if is_push_triggered and avg_duration > 5:  # Push workflows >5min delay releases
-            return "high"
-        if avg_duration > 15:  # Any workflow >15min is extremely slow
+        if avg_duration > 15:  # Extremely slow workflows impact CI/CD resources
             return "high"
         
-        # MEDIUM: Fast developer workflows, slow background workflows, resource hogs
-        if is_pr_triggered or is_push_triggered:  # Fast PR/Push workflows - good but could be faster
+        # MEDIUM: Frequent workflows that could be optimized further
+        # OR background workflows that are slow but don't block developers
+        if is_frequent:  # Fast PR/Push workflows - still worth optimizing
             return "medium"
-        if avg_duration > 10:  # Background workflows >10min (nightly builds, etc.)
-            return "medium"
-        if frequency_score > 10 and avg_duration > 5:  # High frequency + moderate duration
+        if avg_duration > 10:  # Slow background workflows (nightly builds, etc.)
             return "medium"
         
+        # LOW: Everything else
         return "low"

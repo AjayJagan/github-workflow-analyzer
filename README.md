@@ -1,20 +1,20 @@
-# 🚀 GitHub Workflow Performance Analyzer
+# GitHub Workflow Performance Analyzer
 
 Automated analysis of GitHub Actions workflows with GitHub Pages dashboard deployment.
 
-## 🎯 Overview
+## Overview
 
 This tool automatically analyzes your organization's GitHub Actions workflows and generates a performance dashboard deployed to GitHub Pages. It identifies slow, frequent workflows that are consuming the most CI/CD resources and provides actionable insights for optimization.
 
-## ✨ Features
+## Features
 
-- **🔄 Automated Analysis**: Runs every 15 days via GitHub Actions
-- **📊 Interactive Dashboard**: Beautiful charts and performance metrics
-- **🎯 Smart Prioritization**: Identifies workflows >10min + frequent (≥1/day) as critical
-- **📈 Performance Insights**: Shows daily time impact and optimization potential
-- **🌐 GitHub Pages**: Zero-maintenance dashboard hosting
+- **Automated Analysis**: Runs every 15 days via GitHub Actions
+- **Interactive Dashboard**: Beautiful charts and performance metrics
+- **Smart Prioritization**: Identifies workflows >10min + frequent (≥1/day) as critical
+- **Performance Insights**: Shows daily time impact and optimization potential
+- **GitHub Pages**: Zero-maintenance dashboard hosting
 
-## 🚀 Quick Setup
+## Quick Setup
 
 1. **Fork/Copy this repository** to your organization
 
@@ -41,27 +41,27 @@ This tool automatically analyzes your organization's GitHub Actions workflows an
 
 That's it! The dashboard will be available at: `https://[your-org].github.io/[repo-name]/`
 
-## 📋 What It Analyzes
+## What It Analyzes
 
-### Critical Workflows (🔴 Priority)
+### Critical Workflows (Priority)
 - **PR workflows >10 minutes** - Directly block developer productivity
 - **Push to main workflows >10 minutes** - Block deployment pipeline
 - These workflows have maximum impact on team velocity
 
-### High Priority (🟠)
+### High Priority
 - **PR workflows >5 minutes** - Create developer friction
 - **Push to main >5 minutes** - Delay releases  
 - **Any workflow >15 minutes** - Extremely slow regardless of trigger
 
-### Medium Priority (🟡)
+### Medium Priority
 - **Fast PR/Push workflows** - Good but could be faster
 - **Background workflows >10 minutes** - Slow but don't block developers
 - **High-frequency workflows** - Resource consumption concerns
 
-### Low Priority (🟢)
+### Low Priority
 - **Fast background workflows** - No immediate optimization needed
 
-## 📊 Dashboard Features
+## Dashboard Features
 
 ### Performance Matrix
 Visual scatter plot showing all workflows by duration vs frequency with clear critical zones.
@@ -78,7 +78,7 @@ Ranked list of most impactful workflows to optimize first.
 ### Filtering & Details
 Interactive filtering by repository, duration, and frequency in the Workflows tab.
 
-## ⚙️ Configuration
+## Configuration
 
 The analysis runs with these defaults:
 - **Analysis Period**: 15 days
@@ -93,7 +93,7 @@ on:
     - cron: '0 6 1,15 * *'  # Modify this line
 ```
 
-## 🔒 Permissions
+## Permissions
 
 ### GitHub Action Permissions (already configured):
 - `contents: read` - Read repository code
@@ -107,24 +107,24 @@ on:
 
 **Note**: The default `GITHUB_TOKEN` has insufficient permissions for organization-wide analysis, so a Personal Access Token is required.
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```
 ├── .github/workflows/
-│   └── workflow-analysis.yml    # 🚀 GitHub Action workflow
-├── src/                         # 🔧 Core analysis modules
+│   └── workflow-analysis.yml    # GitHub Action workflow
+├── src/                         # Core analysis modules
 │   ├── analyzer.py             # Workflow analysis logic
 │   ├── dashboard.py            # Chart generation
 │   └── github_client.py        # GitHub API integration
 ├── templates/
-│   └── dashboard.html          # 🎨 Dashboard HTML template
-├── action_analyzer.py          # 🎯 Main script for GitHub Actions
-├── requirements.txt            # 📦 Python dependencies
-├── .gitignore                  # 🚫 Ignore unnecessary files
-└── README.md                   # 📖 This setup guide
+│   └── dashboard.html          # Dashboard HTML template
+├── action_analyzer.py          # Main script for GitHub Actions
+├── requirements.txt            # Python dependencies
+├── .gitignore                  # Ignore unnecessary files
+└── README.md                   # This setup guide
 ```
 
-## 💻 Local Development (Optional)
+## Local Development (Optional)
 
 If you want to test locally before deploying:
 
@@ -145,7 +145,7 @@ python action_analyzer.py
 
 **Note**: The `output/` directory will contain the generated dashboard files.
 
-## 🚀 Manual Execution
+## Manual Execution
 
 To run analysis manually:
 
@@ -155,7 +155,7 @@ To run analysis manually:
 4. Wait for completion (~5-10 minutes)
 5. Visit your GitHub Pages URL
 
-## 🎯 Understanding the Results
+## Understanding the Results
 
 ### Key Metrics to Focus On:
 1. **Critical Workflows**: Red diamonds in performance matrix
@@ -169,7 +169,7 @@ To run analysis manually:
 - **Trigger Optimization**: Review if all triggers are necessary
 - **Resource Scaling**: Use larger runners for compute-heavy tasks
 
-## 🤝 Contributing
+## Contributing
 
 This tool is designed to be organization-specific. Common customizations:
 
@@ -177,10 +177,10 @@ This tool is designed to be organization-specific. Common customizations:
 - Customize dashboard styling in `templates/dashboard.html`
 - Adjust repository discovery logic in `src/github_client.py`
 
-## 📄 License
+## License
 
 MIT License - See LICENSE file for details.
 
 ---
 
-**🎯 Ready to optimize your CI/CD performance? Set it up and let the automation handle the rest!**
+**Ready to optimize your CI/CD performance? Set it up and let the automation handle the rest!**

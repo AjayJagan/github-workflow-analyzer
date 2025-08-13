@@ -11,3 +11,5 @@ output/
 # Local development
 .env
 config.yaml
+
+.DS_Store

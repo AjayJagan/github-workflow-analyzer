@@ -86,6 +86,69 @@
             margin-right: 0.5rem;
             border-radius: 50%;
         }
+        .chart-expand-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 5px 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            z-index: 10;
+        }
+        .chart-expand-btn:hover {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .chart-container {
+            position: relative;
+        }
+        .modal-xl {
+            max-width: 98%;
+            margin: 1rem auto;
+        }
+        .fullscreen-chart {
+            height: 85vh;
+            width: 100%;
+        }
+        .modal-fullscreen {
+            width: 100vw;
+            max-width: none;
+            height: 100vh;
+            margin: 0;
+        }
+        .modal-fullscreen .modal-content {
+            height: 100vh;
+            border: 0;
+            border-radius: 0;
+        }
+        .modal-fullscreen .modal-body {
+            overflow-y: auto;
+            padding: 1rem;
+        }
+        .modal-fullscreen .fullscreen-chart {
+            height: calc(100vh - 140px);
+        }
+        .chart-expand-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            z-index: 10;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chart-expand-btn:hover {
+            background: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -151,90 +214,52 @@
                     <i class="fas fa-cogs me-2"></i>Workflows
                 </button>
             </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="trends-tab" data-bs-toggle="tab" data-bs-target="#trends" type="button" role="tab">
-                    <i class="fas fa-chart-line me-2"></i>Trends
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="patterns-tab" data-bs-toggle="tab" data-bs-target="#patterns" type="button" role="tab">
-                    <i class="fas fa-search me-2"></i>Patterns
-                </button>
-            </li>
         </ul>
 
         <div class="tab-content" id="dashboardTabsContent">
             <!-- Overview Tab -->
             <div class="tab-pane fade show active" id="overview" role="tabpanel">
-                <!-- Charts Section -->
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="chart-container">
-                            {{ charts.duration_frequency | safe }}
-                            <div class="performance-legend">
-                                <h6><i class="fas fa-info-circle me-2"></i>Performance Matrix Guide</h6>
-                                <div class="legend-item">
-                                    <span class="legend-symbol" style="background: #d32f2f; transform: rotate(45deg);"></span>
-                                    <strong>Critical:</strong> PR/Push workflows >10min (blocks developers)
+                <!-- Key Criteria Summary -->
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <h5><i class="fas fa-bullseye me-2"></i>Workflow Optimization Focus</h5>
+                            <p class="mb-2">This analysis identifies workflows from the <strong>last 15 days</strong> that need optimization:</p>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>CRITICAL:</strong> Frequent (PR/Push) + Slow (>10min) workflows
                                 </div>
-                                <div class="legend-item">
-                                    <span class="legend-symbol" style="background: #ff9800; clip-path: polygon(50% 0%, 0% 100%, 100% 100%);"></span>
-                                    <strong>High:</strong> PR/Push >5min or any >15min
+                                <div class="col-md-6">
+                                    <strong>HIGH:</strong> Frequent (>5min) or Very Slow (>15min) workflows
                                 </div>
-                                <div class="legend-item">
-                                    <span class="legend-symbol" style="background: #ffc107;"></span>
-                                    <strong>Medium:</strong> Fast PR/Push or slow background jobs
-                                </div>
-                                <div class="legend-item">
-                                    <span class="legend-symbol" style="background: #4caf50;"></span>
-                                    <strong>Low:</strong> Fast background workflows
-                                </div>
-                                <div class="chart-help">
-                                    <strong>💡 How to read:</strong> Focus on red diamonds - these are PR/Push workflows >10min that directly block developers. 
-                                    Orange triangles are PR/Push workflows >5min that create friction or extremely slow (>15min) workflows.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="chart-container">
-                            {{ charts.repository_summary | safe }}
-                            <div class="chart-help">
-                                <strong>📊 Repository Analysis:</strong> 
-                                Shows total workflows vs problematic ones per repository. 
-                                Red bars indicate repositories that need immediate attention.
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Performance Impact Analysis -->
+                <!-- Top Problematic Workflows -->
                 <div class="row">
                     <div class="col-12">
                         <div class="chart-container">
-                            {{ charts.performance_impact | safe }}
-                            <div class="chart-help">
-                                <strong>💰 Performance Impact Guide:</strong> 
-                                This analysis shows the total daily time consumed by different workflow categories. 
-                                <strong>Focus on the red bars</strong> - critical workflows that consume the most time. 
-                                The bottom chart shows which specific workflows are eating up your CI/CD budget.
-                                <span class="text-warning ms-2"><i class="fas fa-exclamation-triangle"></i> 
-                                Pay attention to the "Optimization Potential" box - it shows how much time you could save!</span>
+                            <button class="chart-expand-btn" onclick="expandChart('top-workflows', 'Top Problematic Workflows')">
+                                <i class="fas fa-expand"></i> Expand
+                            </button>
+                            <div id="top-workflows">
+                                {{ charts.top_workflows | safe }}
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Top Workflows Section -->
+                <!-- Repository Performance Scorecard -->
                 <div class="row">
                     <div class="col-12">
                         <div class="chart-container">
-                            {{ charts.top_workflows | safe }}
-                            <div class="chart-help">
-                                <strong>🎯 Top Problematic Workflows:</strong> 
-                                These are your highest-impact workflows ranked by combined score (duration × frequency × other factors). 
-                                <strong>Start optimizing from the top</strong> - workflows with the highest scores will give you the biggest performance gains.
-                                The bars show impact scores, while the text shows average duration and total runs.
+                            <button class="chart-expand-btn" onclick="expandChart('repository-scorecard', 'Repository Performance Scorecard')">
+                                <i class="fas fa-expand"></i> Expand
+                            </button>
+                            <div id="repository-scorecard">
+                                {{ charts.repository_scorecard | safe }}
                             </div>
                         </div>
                     </div>
@@ -246,7 +271,7 @@
                 <div class="mt-3">
                     <div class="filter-section">
                         <div class="row">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label for="repoFilter" class="form-label">Filter by Repository:</label>
                                 <select class="form-select" id="repoFilter" onchange="filterWorkflows()">
                                     <option value="">All Repositories</option>
@@ -255,13 +280,15 @@
                                     {% endfor %}
                                 </select>
                             </div>
-                            <div class="col-md-4">
-                                <label for="durationFilter" class="form-label">Min Duration (minutes):</label>
-                                <input type="number" class="form-control" id="durationFilter" value="0" onchange="filterWorkflows()">
-                            </div>
-                            <div class="col-md-4">
-                                <label for="frequencyFilter" class="form-label">Min Frequency (runs/day):</label>
-                                <input type="number" class="form-control" id="frequencyFilter" value="0" step="0.1" onchange="filterWorkflows()">
+                            <div class="col-md-6">
+                                <label for="priorityFilter" class="form-label">Filter by Priority:</label>
+                                <select class="form-select" id="priorityFilter" onchange="filterWorkflows()">
+                                    <option value="">All Priorities</option>
+                                    <option value="critical">Critical</option>
+                                    <option value="high">High</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="low">Low</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -272,21 +299,19 @@
                             <table class="table table-striped workflow-table" id="workflowTable">
                                 <thead>
                                     <tr>
-                                        <th>Repository</th>
-                                        <th>Workflow Name</th>
-                                        <th>Avg Duration</th>
-                                        <th>Frequency</th>
-                                        <th>Total Runs</th>
-                                        <th>Priority</th>
-                                        <th>Impact Score</th>
+                                        <th onclick="sortTable(0)" style="cursor: pointer;">Repository <i class="fas fa-sort"></i></th>
+                                        <th onclick="sortTable(1)" style="cursor: pointer;">Workflow Name <i class="fas fa-sort"></i></th>
+                                        <th onclick="sortTable(2)" style="cursor: pointer;">Avg Duration <i class="fas fa-sort"></i></th>
+                                        <th onclick="sortTable(3)" style="cursor: pointer;">Frequency <i class="fas fa-sort"></i></th>
+                                        <th onclick="sortTable(4)" style="cursor: pointer;">Total Runs <i class="fas fa-sort"></i></th>
+                                        <th onclick="sortTable(5)" style="cursor: pointer;">Priority <i class="fas fa-sort"></i></th>
                                         <th>Triggers</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for workflow in workflows %}
                                     <tr data-repo="{{ workflow.repository }}" 
-                                        data-duration="{{ workflow.avg_duration_minutes }}"
-                                        data-frequency="{{ workflow.frequency_score }}">
+                                        data-priority="{{ workflow.optimization_priority }}">
                                         <td><span class="badge bg-primary">{{ workflow.repository.split('/')[-1] }}</span></td>
                                         <td>{{ workflow.workflow_name }}</td>
                                         <td>
@@ -307,19 +332,11 @@
                                                 <span class="badge bg-secondary">Low</span>
                                             {% endif %}
                                             {% if workflow.is_pr_triggered %}
-                                                <span class="badge bg-primary">PR</span>
+                                                <span class="badge bg-primary ms-1">PR</span>
                                             {% endif %}
                                             {% if workflow.is_push_triggered %}
-                                                <span class="badge bg-success">Push</span>
+                                                <span class="badge bg-success ms-1">Push</span>
                                             {% endif %}
-                                        </td>
-                                        <td>
-                                            <div class="progress" style="width: 100px;">
-                                                <div class="progress-bar" role="progressbar" 
-                                                     style="width: {{ (workflow.combined_score / max_score * 100) if max_score > 0 else 0 }}%">
-                                                    {{ "%.1f"|format(workflow.combined_score) }}
-                                                </div>
-                                            </div>
                                         </td>
                                         <td>{{ workflow.trigger_events | join(', ') }}</td>
                                     </tr>
@@ -331,98 +348,218 @@
                 </div>
             </div>
 
-            <!-- Trends Tab -->
-            <div class="tab-pane fade" id="trends" role="tabpanel">
-                <div class="row mt-3">
-                    <div class="col-12">
-                        <div class="chart-container">
-                            {{ charts.daily_trends | safe }}
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="chart-container">
-                            {{ charts.duration_distribution | safe }}
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="chart-container">
-                            {{ charts.hourly_patterns | safe }}
-                        </div>
-                    </div>
-                </div>
-            </div>
+        </div>
+    </div>
 
-            <!-- Patterns Tab -->
-            <div class="tab-pane fade" id="patterns" role="tabpanel">
-                <div class="row mt-3">
-                    <div class="col-md-6">
-                        <div class="chart-container">
-                            {{ charts.trigger_events | safe }}
-                        </div>
+    <!-- Chart Expansion Modal -->
+    <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl" id="chartModalDialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="chartModalLabel">Chart</h5>
+                    <div class="btn-group me-3">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="toggleFullscreen()" id="fullscreenBtn">
+                            <i class="fas fa-expand"></i> Fullscreen
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="downloadChart()" id="downloadBtn">
+                            <i class="fas fa-download"></i> Download
+                        </button>
                     </div>
-                    <div class="col-md-6">
-                        <div class="chart-container">
-                            <h5>Recommendations</h5>
-                            <div class="alert alert-info">
-                                <h6><i class="fas fa-lightbulb me-2"></i>Optimization Suggestions:</h6>
-                                <ul class="mb-0">
-                                    <li>Consider parallelizing workflows that run longer than 10 minutes</li>
-                                    <li>Review frequently triggered workflows for unnecessary runs</li>
-                                    <li>Implement caching for workflows with repetitive tasks</li>
-                                    <li>Schedule heavy workflows during off-peak hours</li>
-                                </ul>
-                            </div>
-                            
-                            <h6>Top Issues Found:</h6>
-                            <div class="list-group">
-                                {% for workflow in workflows[:5] %}
-                                {% if workflow.combined_score > 5 %}
-                                <div class="list-group-item">
-                                    <div class="d-flex w-100 justify-content-between">
-                                        <h6 class="mb-1">{{ workflow.workflow_name }}</h6>
-                                        <small class="text-danger">Score: {{ "%.1f"|format(workflow.combined_score) }}</small>
-                                    </div>
-                                    <p class="mb-1">{{ workflow.repository }}</p>
-                                    <small>{{ "%.1f"|format(workflow.avg_duration_minutes) }} min avg, {{ "%.1f"|format(workflow.frequency_score) }} runs/day</small>
-                                </div>
-                                {% endif %}
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="expandedChart" class="fullscreen-chart"></div>
+                </div>
+                <div class="modal-footer">
+                    <small class="text-muted me-auto">Use mouse wheel to zoom, drag to pan</small>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
     </div>
 
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function filterWorkflows() {
             const repoFilter = document.getElementById('repoFilter').value;
-            const durationFilter = parseFloat(document.getElementById('durationFilter').value) || 0;
-            const frequencyFilter = parseFloat(document.getElementById('frequencyFilter').value) || 0;
+            const priorityFilter = document.getElementById('priorityFilter').value;
             
             const rows = document.querySelectorAll('#workflowTable tbody tr');
             
             rows.forEach(row => {
                 const repo = row.dataset.repo;
-                const duration = parseFloat(row.dataset.duration);
-                const frequency = parseFloat(row.dataset.frequency);
+                const priority = row.dataset.priority;
                 
                 const showRepo = !repoFilter || repo.includes(repoFilter);
-                const showDuration = duration >= durationFilter;
-                const showFrequency = frequency >= frequencyFilter;
+                const showPriority = !priorityFilter || priority === priorityFilter;
                 
-                if (showRepo && showDuration && showFrequency) {
+                if (showRepo && showPriority) {
                     row.style.display = '';
                 } else {
                     row.style.display = 'none';
                 }
             });
         }
+
+        function sortTable(columnIndex) {
+            const table = document.getElementById('workflowTable');
+            const tbody = table.getElementsByTagName('tbody')[0];
+            const rows = Array.from(tbody.getElementsByTagName('tr'));
+            
+            // Determine sort direction
+            const currentDirection = table.dataset.sortDirection || 'asc';
+            const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+            table.dataset.sortDirection = newDirection;
+            
+            // Sort rows
+            rows.sort((a, b) => {
+                let aVal = a.getElementsByTagName('td')[columnIndex].textContent.trim();
+                let bVal = b.getElementsByTagName('td')[columnIndex].textContent.trim();
+                
+                // Handle numeric columns
+                if (columnIndex === 2) { // Duration
+                    aVal = parseFloat(aVal.replace(' min', ''));
+                    bVal = parseFloat(bVal.replace(' min', ''));
+                } else if (columnIndex === 3) { // Frequency
+                    aVal = parseFloat(aVal.replace('/day', ''));
+                    bVal = parseFloat(bVal.replace('/day', ''));
+                } else if (columnIndex === 4) { // Total runs
+                    aVal = parseInt(aVal);
+                    bVal = parseInt(bVal);
+                } else if (columnIndex === 5) { // Priority
+                    const priorityOrder = { 'Critical': 4, 'High': 3, 'Medium': 2, 'Low': 1 };
+                    aVal = priorityOrder[aVal.split(' ')[0]] || 0;
+                    bVal = priorityOrder[bVal.split(' ')[0]] || 0;
+                }
+                
+                if (typeof aVal === 'number' && typeof bVal === 'number') {
+                    return newDirection === 'asc' ? aVal - bVal : bVal - aVal;
+                } else {
+                    return newDirection === 'asc' ? 
+                        aVal.localeCompare(bVal) : 
+                        bVal.localeCompare(aVal);
+                }
+            });
+            
+            // Re-append sorted rows
+            rows.forEach(row => tbody.appendChild(row));
+            
+            // Update sort indicators
+            const headers = table.getElementsByTagName('th');
+            for (let i = 0; i < headers.length - 1; i++) { // Exclude last column (no sorting)
+                const icon = headers[i].querySelector('i');
+                if (icon) {
+                    if (i === columnIndex) {
+                        icon.className = `fas fa-sort-${newDirection === 'asc' ? 'up' : 'down'}`;
+                    } else {
+                        icon.className = 'fas fa-sort';
+                    }
+                }
+            }
+        }
+
+        // Global variables for chart expansion
+        let currentChartId = null;
+        let isFullscreen = false;
+
+        // Chart expansion functionality
+        function expandChart(chartId, chartTitle) {
+            currentChartId = chartId;
+            const originalChart = document.getElementById(chartId);
+            const expandedChart = document.getElementById('expandedChart');
+            const modalTitle = document.getElementById('chartModalLabel');
+            
+            // Set modal title
+            modalTitle.textContent = chartTitle;
+            
+            // Clone the chart content
+            expandedChart.innerHTML = originalChart.innerHTML;
+            
+            // Reset fullscreen state
+            isFullscreen = false;
+            const modalDialog = document.getElementById('chartModalDialog');
+            modalDialog.classList.remove('modal-fullscreen');
+            updateFullscreenButton();
+            
+            // Show the modal
+            const modal = new bootstrap.Modal(document.getElementById('chartModal'));
+            modal.show();
+            
+            // Trigger Plotly resize for better display
+            setTimeout(() => {
+                resizeChart();
+            }, 300);
+        }
+
+        function toggleFullscreen() {
+            const modalDialog = document.getElementById('chartModalDialog');
+            isFullscreen = !isFullscreen;
+            
+            if (isFullscreen) {
+                modalDialog.classList.add('modal-fullscreen');
+            } else {
+                modalDialog.classList.remove('modal-fullscreen');
+            }
+            
+            updateFullscreenButton();
+            
+            // Resize chart after transition
+            setTimeout(() => {
+                resizeChart();
+            }, 300);
+        }
+
+        function updateFullscreenButton() {
+            const btn = document.getElementById('fullscreenBtn');
+            if (isFullscreen) {
+                btn.innerHTML = '<i class="fas fa-compress"></i> Exit Fullscreen';
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-primary');
+            } else {
+                btn.innerHTML = '<i class="fas fa-expand"></i> Fullscreen';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline-primary');
+            }
+        }
+
+        function resizeChart() {
+            const expandedChart = document.getElementById('expandedChart');
+            const plotlyCharts = expandedChart.querySelectorAll('.plotly-graph-div');
+            plotlyCharts.forEach(chart => {
+                if (window.Plotly) {
+                    window.Plotly.Plots.resize(chart);
+                }
+            });
+        }
+
+        function downloadChart() {
+            const expandedChart = document.getElementById('expandedChart');
+            const plotlyChart = expandedChart.querySelector('.plotly-graph-div');
+            
+            if (plotlyChart && window.Plotly) {
+                const filename = currentChartId ? `${currentChartId}-chart` : 'workflow-chart';
+                window.Plotly.downloadImage(plotlyChart, {
+                    format: 'png',
+                    width: 1200,
+                    height: 800,
+                    filename: filename
+                });
+            }
+        }
+
+        // Handle ESC key for fullscreen exit
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && isFullscreen) {
+                toggleFullscreen();
+            }
+        });
+
+        // Auto-resize on window resize
+        window.addEventListener('resize', function() {
+            if (document.getElementById('chartModal').classList.contains('show')) {
+                setTimeout(resizeChart, 100);
+            }
+        });
 
         // Initialize tooltips
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
