@@ -1,0 +1,68 @@
+name: Workflow Performance Analysis
+
+on:
+  schedule:
+    # Run on the 1st and 15th of each month at 6 AM UTC
+    - cron: '0 6 1,15 * *'
+  workflow_dispatch:  # Allow manual triggering
+    inputs:
+      target_org:
+        description: 'GitHub organization to analyze'
+        required: false
+        default: 'opendatahub-io'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+    
+    - name: Run workflow analysis
+      env:
+        GITHUB_TOKEN: ${{ secrets.WORKFLOW_ANALYZER_TOKEN }}
+        TARGET_ORG: ${{ github.event.inputs.target_org || 'opendatahub-io' }}
+      run: |
+        python action_analyzer.py
+    
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+    
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./output
+    
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+    
+    - name: Create summary
+      run: |
+        echo "## 📊 Workflow Performance Analysis Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Dashboard URL**: ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Analysis Date**: $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Analysis Period**: 15 days" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "🎯 **Next scheduled run**: Every 1st and 15th of the month at 6 AM UTC" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .dashboard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .nav-tabs .nav-link {
+            border: none;
+            background: transparent;
+            color: #667eea;
+        }
+        .nav-tabs .nav-link.active {
+            background: #667eea;
+            color: white;
+            border-radius: 5px;
+        }
+        .workflow-table {
+            font-size: 0.9rem;
+        }
+        .badge-duration {
+            background: #ff6b6b;
+        }
+        .badge-frequency {
+            background: #4ecdc4;
+        }
+        .filter-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .help-tooltip {
+            cursor: help;
+            color: #6c757d;
+        }
+        .chart-help {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 0.75rem;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+        .performance-legend {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        .legend-item {
+            display: inline-block;
+            margin-right: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .legend-symbol {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-right: 0.5rem;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-chart-line me-3"></i>{{ title }}</h1>
+                    <p class="mb-0">Analysis of GitHub workflow performance across repositories</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <p class="mb-0"><i class="fas fa-clock me-2"></i>Generated: {{ summary.generated_at }}</p>
+                    <p class="mb-0"><i class="fas fa-calendar me-2"></i>Analysis Period: {{ summary.analysis_period_days }} days</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Summary Statistics -->
+        <div class="row">
+            <div class="col-md-2">
+                <div class="stat-card text-center">
+                    <div class="stat-number">{{ summary.total_workflows }}</div>
+                    <div class="text-muted">Total Workflows</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="stat-card text-center">
+                    <div class="stat-number text-warning">{{ summary.problematic_workflows }}</div>
+                    <div class="text-muted">Problematic</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="stat-card text-center">
+                    <div class="stat-number">{{ summary.total_repositories }}</div>
+                    <div class="text-muted">Repositories</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="stat-number">{{ summary.avg_duration_minutes }}</div>
+                    <div class="text-muted">Avg Duration (min)</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card text-center">
+                    <div class="stat-number">{{ summary.total_runs_analyzed }}</div>
+                    <div class="text-muted">Total Runs Analyzed</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">
+                    <i class="fas fa-home me-2"></i>Overview
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="workflows-tab" data-bs-toggle="tab" data-bs-target="#workflows" type="button" role="tab">
+                    <i class="fas fa-cogs me-2"></i>Workflows
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="trends-tab" data-bs-toggle="tab" data-bs-target="#trends" type="button" role="tab">
+                    <i class="fas fa-chart-line me-2"></i>Trends
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="patterns-tab" data-bs-toggle="tab" data-bs-target="#patterns" type="button" role="tab">
+                    <i class="fas fa-search me-2"></i>Patterns
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="dashboardTabsContent">
+            <!-- Overview Tab -->
+            <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                <!-- Charts Section -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            {{ charts.duration_frequency | safe }}
+                            <div class="performance-legend">
+                                <h6><i class="fas fa-info-circle me-2"></i>Performance Matrix Guide</h6>
+                                <div class="legend-item">
+                                    <span class="legend-symbol" style="background: #d32f2f; transform: rotate(45deg);"></span>
+                                    <strong>Critical:</strong> Frequent + Slow (>10min, >1/day)
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-symbol" style="background: #ff9800; clip-path: polygon(50% 0%, 0% 100%, 100% 100%);"></span>
+                                    <strong>High:</strong> Slow but infrequent (>10min)
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-symbol" style="background: #ffc107;"></span>
+                                    <strong>Medium:</strong> Fast but very frequent (>2/day)
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-symbol" style="background: #4caf50;"></span>
+                                    <strong>Low:</strong> Fast and infrequent
+                                </div>
+                                <div class="chart-help">
+                                    <strong>💡 How to read:</strong> Focus on red diamonds in the upper-right area. 
+                                    These workflows waste the most developer time and should be optimized first.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            {{ charts.repository_summary | safe }}
+                            <div class="chart-help">
+                                <strong>📊 Repository Analysis:</strong> 
+                                Shows total workflows vs problematic ones per repository. 
+                                Red bars indicate repositories that need immediate attention.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Performance Impact Analysis -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="chart-container">
+                            {{ charts.performance_impact | safe }}
+                            <div class="chart-help">
+                                <strong>💰 Performance Impact Guide:</strong> 
+                                This analysis shows the total daily time consumed by different workflow categories. 
+                                <strong>Focus on the red bars</strong> - critical workflows that consume the most time. 
+                                The bottom chart shows which specific workflows are eating up your CI/CD budget.
+                                <span class="text-warning ms-2"><i class="fas fa-exclamation-triangle"></i> 
+                                Pay attention to the "Optimization Potential" box - it shows how much time you could save!</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Top Workflows Section -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="chart-container">
+                            {{ charts.top_workflows | safe }}
+                            <div class="chart-help">
+                                <strong>🎯 Top Problematic Workflows:</strong> 
+                                These are your highest-impact workflows ranked by combined score (duration × frequency × other factors). 
+                                <strong>Start optimizing from the top</strong> - workflows with the highest scores will give you the biggest performance gains.
+                                The bars show impact scores, while the text shows average duration and total runs.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Workflows Tab -->
+            <div class="tab-pane fade" id="workflows" role="tabpanel">
+                <div class="mt-3">
+                    <div class="filter-section">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="repoFilter" class="form-label">Filter by Repository:</label>
+                                <select class="form-select" id="repoFilter" onchange="filterWorkflows()">
+                                    <option value="">All Repositories</option>
+                                    {% for repo in repositories %}
+                                    <option value="{{ repo }}">{{ repo.split('/')[-1] }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="durationFilter" class="form-label">Min Duration (minutes):</label>
+                                <input type="number" class="form-control" id="durationFilter" value="0" onchange="filterWorkflows()">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="frequencyFilter" class="form-label">Min Frequency (runs/day):</label>
+                                <input type="number" class="form-control" id="frequencyFilter" value="0" step="0.1" onchange="filterWorkflows()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <h5>Workflow Details</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped workflow-table" id="workflowTable">
+                                <thead>
+                                    <tr>
+                                        <th>Repository</th>
+                                        <th>Workflow Name</th>
+                                        <th>Avg Duration</th>
+                                        <th>Frequency</th>
+                                        <th>Total Runs</th>
+                                        <th>Priority</th>
+                                        <th>Impact Score</th>
+                                        <th>Triggers</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for workflow in workflows %}
+                                    <tr data-repo="{{ workflow.repository }}" 
+                                        data-duration="{{ workflow.avg_duration_minutes }}"
+                                        data-frequency="{{ workflow.frequency_score }}">
+                                        <td><span class="badge bg-primary">{{ workflow.repository.split('/')[-1] }}</span></td>
+                                        <td>{{ workflow.workflow_name }}</td>
+                                        <td>
+                                            <span class="badge badge-duration">{{ "%.1f"|format(workflow.avg_duration_minutes) }} min</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-frequency">{{ "%.1f"|format(workflow.frequency_score) }}/day</span>
+                                        </td>
+                                        <td>{{ workflow.total_runs }}</td>
+                                        <td>
+                                            {% if workflow.optimization_priority == 'critical' %}
+                                                <span class="badge bg-danger">Critical</span>
+                                            {% elif workflow.optimization_priority == 'high' %}
+                                                <span class="badge bg-warning">High</span>
+                                            {% elif workflow.optimization_priority == 'medium' %}
+                                                <span class="badge bg-info">Medium</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Low</span>
+                                            {% endif %}
+                                            {% if workflow.is_pr_triggered %}
+                                                <span class="badge bg-primary">PR</span>
+                                            {% endif %}
+                                            {% if workflow.is_push_triggered %}
+                                                <span class="badge bg-success">Push</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="progress" style="width: 100px;">
+                                                <div class="progress-bar" role="progressbar" 
+                                                     style="width: {{ (workflow.combined_score / max_score * 100) if max_score > 0 else 0 }}%">
+                                                    {{ "%.1f"|format(workflow.combined_score) }}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{{ workflow.trigger_events | join(', ') }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trends Tab -->
+            <div class="tab-pane fade" id="trends" role="tabpanel">
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="chart-container">
+                            {{ charts.daily_trends | safe }}
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            {{ charts.duration_distribution | safe }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            {{ charts.hourly_patterns | safe }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Patterns Tab -->
+            <div class="tab-pane fade" id="patterns" role="tabpanel">
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            {{ charts.trigger_events | safe }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <h5>Recommendations</h5>
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-lightbulb me-2"></i>Optimization Suggestions:</h6>
+                                <ul class="mb-0">
+                                    <li>Consider parallelizing workflows that run longer than 10 minutes</li>
+                                    <li>Review frequently triggered workflows for unnecessary runs</li>
+                                    <li>Implement caching for workflows with repetitive tasks</li>
+                                    <li>Schedule heavy workflows during off-peak hours</li>
+                                </ul>
+                            </div>
+                            
+                            <h6>Top Issues Found:</h6>
+                            <div class="list-group">
+                                {% for workflow in workflows[:5] %}
+                                {% if workflow.combined_score > 5 %}
+                                <div class="list-group-item">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">{{ workflow.workflow_name }}</h6>
+                                        <small class="text-danger">Score: {{ "%.1f"|format(workflow.combined_score) }}</small>
+                                    </div>
+                                    <p class="mb-1">{{ workflow.repository }}</p>
+                                    <small>{{ "%.1f"|format(workflow.avg_duration_minutes) }} min avg, {{ "%.1f"|format(workflow.frequency_score) }} runs/day</small>
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function filterWorkflows() {
+            const repoFilter = document.getElementById('repoFilter').value;
+            const durationFilter = parseFloat(document.getElementById('durationFilter').value) || 0;
+            const frequencyFilter = parseFloat(document.getElementById('frequencyFilter').value) || 0;
+            
+            const rows = document.querySelectorAll('#workflowTable tbody tr');
+            
+            rows.forEach(row => {
+                const repo = row.dataset.repo;
+                const duration = parseFloat(row.dataset.duration);
+                const frequency = parseFloat(row.dataset.frequency);
+                
+                const showRepo = !repoFilter || repo.includes(repoFilter);
+                const showDuration = duration >= durationFilter;
+                const showFrequency = frequency >= frequencyFilter;
+                
+                if (showRepo && showDuration && showFrequency) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    </script>
+</body>
+</html>
