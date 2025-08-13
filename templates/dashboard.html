@@ -86,6 +86,31 @@
             margin-right: 0.5rem;
             border-radius: 50%;
         }
+        .chart-expand-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 5px 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            z-index: 10;
+        }
+        .chart-expand-btn:hover {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .chart-container {
+            position: relative;
+        }
+        .modal-xl {
+            max-width: 95%;
+        }
+        .fullscreen-chart {
+            height: 80vh;
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -170,7 +195,12 @@
                 <div class="row">
                     <div class="col-md-6">
                         <div class="chart-container">
-                            {{ charts.duration_frequency | safe }}
+                            <button class="chart-expand-btn" onclick="expandChart('performance-matrix', 'Performance Matrix')">
+                                <i class="fas fa-expand"></i> Expand
+                            </button>
+                            <div id="performance-matrix">
+                                {{ charts.duration_frequency | safe }}
+                            </div>
                             <div class="performance-legend">
                                 <h6><i class="fas fa-info-circle me-2"></i>Performance Matrix Guide</h6>
                                 <div class="legend-item">
@@ -198,7 +228,12 @@
                     </div>
                     <div class="col-md-6">
                         <div class="chart-container">
-                            {{ charts.repository_summary | safe }}
+                            <button class="chart-expand-btn" onclick="expandChart('repository-summary', 'Repository Summary')">
+                                <i class="fas fa-expand"></i> Expand
+                            </button>
+                            <div id="repository-summary">
+                                {{ charts.repository_summary | safe }}
+                            </div>
                             <div class="chart-help">
                                 <strong>📊 Repository Analysis:</strong> 
                                 Shows total workflows vs problematic ones per repository. 
@@ -212,7 +247,12 @@
                 <div class="row">
                     <div class="col-12">
                         <div class="chart-container">
-                            {{ charts.performance_impact | safe }}
+                            <button class="chart-expand-btn" onclick="expandChart('performance-impact', 'Performance Impact Analysis')">
+                                <i class="fas fa-expand"></i> Expand
+                            </button>
+                            <div id="performance-impact">
+                                {{ charts.performance_impact | safe }}
+                            </div>
                             <div class="chart-help">
                                 <strong>💰 Performance Impact Guide:</strong> 
                                 This analysis shows the total daily time consumed by different workflow categories. 
@@ -229,7 +269,12 @@
                 <div class="row">
                     <div class="col-12">
                         <div class="chart-container">
-                            {{ charts.top_workflows | safe }}
+                            <button class="chart-expand-btn" onclick="expandChart('top-workflows', 'Top Problematic Workflows')">
+                                <i class="fas fa-expand"></i> Expand
+                            </button>
+                            <div id="top-workflows">
+                                {{ charts.top_workflows | safe }}
+                            </div>
                             <div class="chart-help">
                                 <strong>🎯 Top Problematic Workflows:</strong> 
                                 These are your highest-impact workflows ranked by combined score (duration × frequency × other factors). 
@@ -336,19 +381,34 @@
                 <div class="row mt-3">
                     <div class="col-12">
                         <div class="chart-container">
-                            {{ charts.daily_trends | safe }}
+                            <button class="chart-expand-btn" onclick="expandChart('daily-trends', 'Daily Trends')">
+                                <i class="fas fa-expand"></i> Expand
+                            </button>
+                            <div id="daily-trends">
+                                {{ charts.daily_trends | safe }}
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-md-6">
                         <div class="chart-container">
-                            {{ charts.duration_distribution | safe }}
+                            <button class="chart-expand-btn" onclick="expandChart('duration-distribution', 'Duration Distribution')">
+                                <i class="fas fa-expand"></i> Expand
+                            </button>
+                            <div id="duration-distribution">
+                                {{ charts.duration_distribution | safe }}
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="chart-container">
-                            {{ charts.hourly_patterns | safe }}
+                            <button class="chart-expand-btn" onclick="expandChart('hourly-patterns', 'Hourly Patterns')">
+                                <i class="fas fa-expand"></i> Expand
+                            </button>
+                            <div id="hourly-patterns">
+                                {{ charts.hourly_patterns | safe }}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -359,7 +419,12 @@
                 <div class="row mt-3">
                     <div class="col-md-6">
                         <div class="chart-container">
-                            {{ charts.trigger_events | safe }}
+                            <button class="chart-expand-btn" onclick="expandChart('trigger-events', 'Trigger Events')">
+                                <i class="fas fa-expand"></i> Expand
+                            </button>
+                            <div id="trigger-events">
+                                {{ charts.trigger_events | safe }}
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -397,6 +462,23 @@
         </div>
     </div>
 
+    <!-- Chart Expansion Modal -->
+    <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="chartModalLabel">Chart</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="expandedChart" class="fullscreen-chart"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -422,6 +504,33 @@
                     row.style.display = 'none';
                 }
             });
+        }
+
+        // Chart expansion functionality
+        function expandChart(chartId, chartTitle) {
+            const originalChart = document.getElementById(chartId);
+            const expandedChart = document.getElementById('expandedChart');
+            const modalTitle = document.getElementById('chartModalLabel');
+            
+            // Set modal title
+            modalTitle.textContent = chartTitle;
+            
+            // Clone the chart content
+            expandedChart.innerHTML = originalChart.innerHTML;
+            
+            // Show the modal
+            const modal = new bootstrap.Modal(document.getElementById('chartModal'));
+            modal.show();
+            
+            // Trigger Plotly resize for better display
+            setTimeout(() => {
+                const plotlyCharts = expandedChart.querySelectorAll('.plotly-graph-div');
+                plotlyCharts.forEach(chart => {
+                    if (window.Plotly) {
+                        window.Plotly.Plots.resize(chart);
+                    }
+                });
+            }, 300);
         }
 
         // Initialize tooltips
