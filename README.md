@@ -44,19 +44,22 @@ That's it! The dashboard will be available at: `https://[your-org].github.io/[re
 ## 📋 What It Analyzes
 
 ### Critical Workflows (🔴 Priority)
-- Duration ≥10 minutes **AND** Frequency ≥1 run/day
-- These are your biggest optimization targets
+- **PR workflows >10 minutes** - Directly block developer productivity
+- **Push to main workflows >10 minutes** - Block deployment pipeline
+- These workflows have maximum impact on team velocity
 
 ### High Priority (🟠)
-- Duration ≥10 minutes but infrequent
-- Good candidates for parallelization
+- **PR workflows >5 minutes** - Create developer friction
+- **Push to main >5 minutes** - Delay releases  
+- **Any workflow >15 minutes** - Extremely slow regardless of trigger
 
 ### Medium Priority (🟡)
-- Fast but very frequent (≥2 runs/day)
-- Consider trigger optimization
+- **Fast PR/Push workflows** - Good but could be faster
+- **Background workflows >10 minutes** - Slow but don't block developers
+- **High-frequency workflows** - Resource consumption concerns
 
 ### Low Priority (🟢)
-- Fast and infrequent workflows
+- **Fast background workflows** - No immediate optimization needed
 
 ## 📊 Dashboard Features
 

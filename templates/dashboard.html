@@ -175,23 +175,23 @@
                                 <h6><i class="fas fa-info-circle me-2"></i>Performance Matrix Guide</h6>
                                 <div class="legend-item">
                                     <span class="legend-symbol" style="background: #d32f2f; transform: rotate(45deg);"></span>
-                                    <strong>Critical:</strong> Frequent + Slow (>10min, >1/day)
+                                    <strong>Critical:</strong> PR/Push workflows >10min (blocks developers)
                                 </div>
                                 <div class="legend-item">
                                     <span class="legend-symbol" style="background: #ff9800; clip-path: polygon(50% 0%, 0% 100%, 100% 100%);"></span>
-                                    <strong>High:</strong> Slow but infrequent (>10min)
+                                    <strong>High:</strong> PR/Push >5min or any >15min
                                 </div>
                                 <div class="legend-item">
                                     <span class="legend-symbol" style="background: #ffc107;"></span>
-                                    <strong>Medium:</strong> Fast but very frequent (>2/day)
+                                    <strong>Medium:</strong> Fast PR/Push or slow background jobs
                                 </div>
                                 <div class="legend-item">
                                     <span class="legend-symbol" style="background: #4caf50;"></span>
-                                    <strong>Low:</strong> Fast and infrequent
+                                    <strong>Low:</strong> Fast background workflows
                                 </div>
                                 <div class="chart-help">
-                                    <strong>💡 How to read:</strong> Focus on red diamonds in the upper-right area. 
-                                    These workflows waste the most developer time and should be optimized first.
+                                    <strong>💡 How to read:</strong> Focus on red diamonds - these are PR/Push workflows >10min that directly block developers. 
+                                    Orange triangles are PR/Push workflows >5min that create friction or extremely slow (>15min) workflows.
                                 </div>
                             </div>
                         </div>

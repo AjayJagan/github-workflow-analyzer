@@ -15,6 +15,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read
 
 # Allow only one concurrent deployment
 concurrency:
@@ -47,6 +48,12 @@ jobs:
     
     - name: Setup Pages
       uses: actions/configure-pages@v4
+      
+    - name: Check output directory
+      run: |
+        ls -la ./output/
+        echo "Files in output directory:"
+        find ./output -type f -name "*.html" | head -5
     
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3

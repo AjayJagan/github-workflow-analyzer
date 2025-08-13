@@ -114,11 +114,18 @@ class WorkflowAnalyzer:
         return sorted(stats, key=lambda x: x.combined_score, reverse=True)
     
     def filter_problematic_workflows(self, stats: List[WorkflowStats]) -> List[WorkflowStats]:
-        """Filter workflows that exceed duration or frequency thresholds."""
+        """Filter workflows that have meaningful optimization impact."""
         return [
             stat for stat in stats
-            if stat.avg_duration_minutes > self.duration_threshold_minutes
-            or stat.frequency_score > 5  # More than 5 runs per day
+            if (
+                # Critical: PR/Push workflows that block developers
+                (stat.is_pr_triggered and stat.avg_duration_minutes > 5) or
+                (stat.is_push_triggered and stat.avg_duration_minutes > 5) or
+                # High impact: Extremely slow workflows regardless of trigger
+                stat.avg_duration_minutes > 15 or
+                # Resource hogs: High frequency + moderate duration
+                (stat.frequency_score > 10 and stat.avg_duration_minutes > 5)
+            )
         ]
     
     def get_repository_summary(self, stats: List[WorkflowStats]) -> Dict[str, Dict]:
@@ -137,8 +144,15 @@ class WorkflowAnalyzer:
             repo_stats[repo]['total_runs'] += stat.total_runs
             repo_stats[repo]['workflows'].append(stat)
             
-            if (stat.avg_duration_minutes > self.duration_threshold_minutes or 
-                stat.frequency_score > 5):  # More than 5 runs per day
+            if (
+                # Critical: PR/Push workflows that block developers
+                (stat.is_pr_triggered and stat.avg_duration_minutes > 5) or
+                (stat.is_push_triggered and stat.avg_duration_minutes > 5) or
+                # High impact: Extremely slow workflows regardless of trigger
+                stat.avg_duration_minutes > 15 or
+                # Resource hogs: High frequency + moderate duration
+                (stat.frequency_score > 10 and stat.avg_duration_minutes > 5)
+            ):
                 repo_stats[repo]['problematic_workflows'] += 1
         
         # Calculate average durations
@@ -248,28 +262,31 @@ class WorkflowAnalyzer:
         return analysis
     
     def _determine_optimization_priority(self, avg_duration: float, frequency_score: float, trigger_analysis: Dict) -> str:
-        """Determine optimization priority based on duration, frequency, and triggers."""
+        """Determine optimization priority based on trigger context and duration impact."""
         
-        # Critical: PR-triggered workflows that are slow
-        if (trigger_analysis.get('is_pr_triggered', False) and 
-            avg_duration > self.duration_threshold_minutes * 2):
+        is_pr_triggered = trigger_analysis.get('is_pr_triggered', False)
+        is_push_triggered = trigger_analysis.get('is_push_triggered', False)
+        
+        # CRITICAL: Workflows that directly block developer velocity
+        if is_pr_triggered and avg_duration > 10:  # PR workflows >10min block developers
+            return "critical"
+        if is_push_triggered and avg_duration > 10:  # Push to main >10min blocks deployments
             return "critical"
         
-        # High: Any PR/Push triggered workflow over threshold, or very frequent workflows
-        if ((trigger_analysis.get('is_pr_triggered', False) or trigger_analysis.get('is_push_triggered', False)) and
-            avg_duration > self.duration_threshold_minutes):
+        # HIGH: Workflows that create developer friction + extremely slow workflows
+        if is_pr_triggered and avg_duration > 5:  # PR workflows >5min still create friction
+            return "high"
+        if is_push_triggered and avg_duration > 5:  # Push workflows >5min delay releases
+            return "high"
+        if avg_duration > 15:  # Any workflow >15min is extremely slow
             return "high"
         
-        # High: Very frequent workflows regardless of trigger
-        if frequency_score > 10:  # More than 10 runs per day
-            return "high"
-        
-        # Medium: Workflows over duration threshold
-        if avg_duration > self.duration_threshold_minutes:
+        # MEDIUM: Fast developer workflows, slow background workflows, resource hogs
+        if is_pr_triggered or is_push_triggered:  # Fast PR/Push workflows - good but could be faster
             return "medium"
-        
-        # Medium: Moderately frequent workflows
-        if frequency_score > 5:  # More than 5 runs per day
+        if avg_duration > 10:  # Background workflows >10min (nightly builds, etc.)
+            return "medium"
+        if frequency_score > 10 and avg_duration > 5:  # High frequency + moderate duration
             return "medium"
         
         return "low"
