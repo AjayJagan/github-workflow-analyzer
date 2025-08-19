@@ -364,6 +364,20 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Monthly CI/CD Resource Usage -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="chart-container">
+                            <button class="chart-expand-btn" onclick="expandChart('monthly-usage', 'Monthly CI/CD Resource Usage by Component')">
+                                <i class="fas fa-expand"></i> Expand
+                            </button>
+                            <div id="monthly-usage">
+                                {{ charts.monthly_usage | safe }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Workflows Tab -->

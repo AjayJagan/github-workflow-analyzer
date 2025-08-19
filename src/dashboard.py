@@ -16,6 +16,9 @@ class DashboardGenerator:
         # 2. Repository Scorecard - Performance Grades
         charts['repository_scorecard'] = self._create_repository_scorecard(repo_summary)
         
+        # 3. Monthly Resource Usage by Component - Team focus analysis
+        charts['monthly_usage'] = self._create_monthly_usage_chart(stats)
+        
         return charts
     
     def _create_top_problematic_workflows_chart(self, stats: List[WorkflowStats]) -> str:
@@ -178,6 +181,148 @@ class DashboardGenerator:
                             {problematic_workflows} / {total_workflows}
                         </div>
                         <div style="font-size: 0.75em; color: #6a6e73;">problems / total</div>
+                    </div>
+                </div>
+            </div>
+            """
+        
+        html_content += """
+            </div>
+        </div>
+        """
+        
+        return html_content
+    
+    def _create_monthly_usage_chart(self, stats: List[WorkflowStats]) -> str:
+        """Create a chart showing monthly resource usage percentage by component/workflow."""
+        if not stats:
+            return "<p>No workflow data available</p>"
+        
+        # Calculate total monthly resource consumption (frequency * duration for all workflows)
+        total_monthly_consumption = sum(s.frequency_score * s.avg_duration_minutes * 30 for s in stats)  # 30 days
+        
+        if total_monthly_consumption == 0:
+            return "<p>No resource consumption data available</p>"
+        
+        # Group by repository/component and calculate consumption percentage
+        component_usage = {}
+        for stat in stats:
+            repo_name = stat.repository.split('/')[-1]  # Get component name
+            monthly_consumption = stat.frequency_score * stat.avg_duration_minutes * 30
+            percentage = (monthly_consumption / total_monthly_consumption) * 100
+            
+            if repo_name not in component_usage:
+                component_usage[repo_name] = {
+                    'percentage': 0,
+                    'total_minutes': 0,
+                    'workflow_count': 0,
+                    'workflows': []
+                }
+            
+            component_usage[repo_name]['percentage'] += percentage
+            component_usage[repo_name]['total_minutes'] += monthly_consumption
+            component_usage[repo_name]['workflow_count'] += 1
+            component_usage[repo_name]['workflows'].append({
+                'name': stat.workflow_name,
+                'percentage': percentage,
+                'frequency': stat.frequency_score,
+                'duration': stat.avg_duration_minutes
+            })
+        
+        # Sort by usage percentage (highest first)
+        sorted_components = sorted(component_usage.items(), key=lambda x: x[1]['percentage'], reverse=True)
+        
+        html_content = """
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; background: white; padding: 25px; border-radius: 10px; border: 1px solid #ddd;">
+            <h3 style="margin-top: 0; color: #151515; border-bottom: 2px solid #06c; padding-bottom: 15px; display: flex; align-items: center;">
+                <i class="fas fa-chart-pie" style="color: #06c; margin-right: 10px;"></i>
+                Monthly CI/CD Resource Usage by Component
+            </h3>
+            <div style="margin-bottom: 20px; padding: 15px; background: #e7f1fa; border-left: 4px solid #06c; border-radius: 4px;">
+                <strong>Resource allocation analysis</strong> - Shows which teams/components consume the most CI/CD resources over a month. 
+                Focus optimization efforts on high-usage components for maximum impact.
+            </div>
+            <div style="max-height: 500px; overflow-y: auto; padding-right: 10px; scrollbar-width: thin; scrollbar-color: #e0e0e0 transparent;">
+        """
+        
+        for i, (component, data) in enumerate(sorted_components, 1):
+            percentage = data['percentage']
+            total_hours = data['total_minutes'] / 60
+            workflow_count = data['workflow_count']
+            
+            # Determine visual priority based on usage percentage
+            if percentage >= 20:
+                priority_color = "#c9190b"  # High usage - red
+                priority_bg = "#faeae8"
+                priority_icon = "🔴"
+                priority_label = "HIGH USAGE"
+            elif percentage >= 10:
+                priority_color = "#f0ab00"  # Medium usage - yellow
+                priority_bg = "#fdf2d0"
+                priority_icon = "🟡"
+                priority_label = "MEDIUM USAGE"
+            elif percentage >= 5:
+                priority_color = "#06c"  # Moderate usage - blue
+                priority_bg = "#e7f1fa"
+                priority_icon = "🔵"
+                priority_label = "MODERATE USAGE"
+            else:
+                priority_color = "#3e8635"  # Low usage - green
+                priority_bg = "#f3faf2"
+                priority_icon = "🟢"
+                priority_label = "LOW USAGE"
+            
+            # Create visual percentage bar
+            bar_width = min(percentage * 4, 100)  # Scale for visual representation
+            
+            html_content += f"""
+            <div style="margin-bottom: 15px; padding: 15px; background: {priority_bg}; border-left: 4px solid {priority_color}; border-radius: 6px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 1.1em; margin-right: 8px;">{priority_icon}</span>
+                            <span style="background: {priority_color}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: bold; margin-right: 10px;">
+                                #{i} {priority_label}
+                            </span>
+                            <strong style="color: #151515; font-size: 1.1em;">{component}</strong>
+                        </div>
+                        <div style="color: #6a6e73; font-size: 0.9em; margin-bottom: 8px;">
+                            <strong>Monthly Usage:</strong> {total_hours:.1f} hours • 
+                            <strong>Workflows:</strong> {workflow_count} active workflows
+                        </div>
+                        <div style="background: #f0f0f0; border-radius: 10px; height: 8px; overflow: hidden; margin-bottom: 8px;">
+                            <div style="background: {priority_color}; height: 100%; width: {bar_width}%; border-radius: 10px; transition: width 0.3s ease;"></div>
+                        </div>
+            """
+            
+            # Show top 3 workflows for this component if it's a high usage component
+            if percentage >= 5 and len(data['workflows']) > 1:
+                top_workflows = sorted(data['workflows'], key=lambda x: x['percentage'], reverse=True)[:3]
+                html_content += """
+                        <div style="margin-top: 10px; padding: 8px; background: rgba(255,255,255,0.7); border-radius: 4px;">
+                            <div style="font-size: 0.8em; color: #6a6e73; margin-bottom: 5px;"><strong>Top Workflows:</strong></div>
+                """
+                for workflow in top_workflows:
+                    html_content += f"""
+                            <div style="font-size: 0.75em; color: #151515; margin-bottom: 2px;">
+                                • {workflow['name'][:40]}{'...' if len(workflow['name']) > 40 else ''} 
+                                ({workflow['percentage']:.1f}% - {workflow['frequency']:.1f}/day, {workflow['duration']:.1f}min)
+                            </div>
+                    """
+                html_content += """
+                        </div>
+                """
+            
+            html_content += f"""
+                    </div>
+                    <div style="text-align: right; margin-left: 15px;">
+                        <div style="background: {priority_color}; color: white; padding: 8px 12px; border-radius: 6px; margin-bottom: 5px;">
+                            <div style="font-size: 1.2em; font-weight: bold;">{percentage:.1f}%</div>
+                            <div style="font-size: 0.7em;">of total usage</div>
+                        </div>
+                        <div style="font-size: 0.8em; color: #6a6e73;">
+                            {total_hours:.0f}h/month
+                        </div>
                     </div>
                 </div>
             </div>
