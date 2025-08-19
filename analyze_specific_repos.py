@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-GitHub Workflow Analyzer for GitHub Actions
+GitHub Workflow Analyzer for specific repositories
 
-Simplified version designed to run as a GitHub Action.
-Analyzes workflows for the current organization and generates a GitHub Pages dashboard.
+Modified version to analyze only specific repositories instead of entire organization.
 """
 
 import os
@@ -20,30 +19,27 @@ from analyzer import WorkflowAnalyzer
 from dashboard import DashboardGenerator
 
 
-def get_target_org():
-    """Get the target GitHub organization to analyze."""
-    # First check if TARGET_ORG is explicitly set (from workflow input)
-    target_org = os.getenv('TARGET_ORG')
-    if target_org:
-        return target_org
-    
-    # Fallback to current repository's organization
-    github_repo = os.getenv('GITHUB_REPOSITORY', '')
-    if '/' in github_repo:
-        return github_repo.split('/')[0]
-    
-    # Default fallback
-    return 'opendatahub-io'
-
-
 def main():
-    """Main function for GitHub Action execution."""
-    print("Starting GitHub Workflow Analysis...")
+    """Main function for analyzing specific repositories."""
+    print("Starting GitHub Workflow Analysis for Specific Repositories...")
     
     # Configuration
     ANALYSIS_DAYS = 15
     DURATION_THRESHOLD = 10  # Flag workflows >10 minutes as slow
-    OUTPUT_PATH = Path('output/index.html')  # GitHub Pages expects index.html
+    OUTPUT_PATH = Path('output/dashboard.html')
+    
+    # Specific repositories to analyze (modify this list)
+    SPECIFIC_REPOS = [
+        # Add your repositories here, for example:
+        "opendatahub-io/odh-dashboard",
+        "opendatahub-io/notebooks", 
+        "opendatahub-io/opendatahub-operator"
+    ]
+    
+    if not SPECIFIC_REPOS:
+        print("ERROR: No repositories specified. Please add repositories to the SPECIFIC_REPOS list.")
+        print("Example: SPECIFIC_REPOS = ['org/repo1', 'org/repo2']")
+        sys.exit(1)
     
     # Get GitHub token from environment
     github_token = os.getenv('GITHUB_TOKEN')
@@ -51,36 +47,20 @@ def main():
         print("ERROR: GITHUB_TOKEN not found in environment")
         sys.exit(1)
     
-    # Get target organization to analyze
-    org = get_target_org()
-    if not org:
-        print("ERROR: Could not determine target GitHub organization")
-        sys.exit(1)
-    
-    print(f"Analyzing organization: {org}")
+    print(f"Analyzing {len(SPECIFIC_REPOS)} specific repositories...")
+    for repo in SPECIFIC_REPOS:
+        print(f"  - {repo}")
     
     try:
         # Initialize components
         github_client = GitHubClient(github_token)
         analyzer = WorkflowAnalyzer(DURATION_THRESHOLD)
-        dashboard_gen = DashboardGenerator(f"{org} - Workflow Performance Dashboard")
+        dashboard_gen = DashboardGenerator("Specific Repositories - Workflow Performance Dashboard")
         
-        # Discover repositories in the organization
-        print("Discovering repositories...")
-        repos = github_client.get_organization_repositories(org, '*')
-        
-        # Safety limit for GitHub Actions
-        MAX_REPOS = 300
-        if len(repos) > MAX_REPOS:
-            print(f"WARNING: Found {len(repos)} repositories, limiting to {MAX_REPOS} for performance")
-            repos = repos[:MAX_REPOS]
-        
-        print(f"Analyzing {len(repos)} repositories...")
-        
-        # Collect workflow runs
+        # Collect workflow runs from specific repositories
         all_runs = []
-        for i, repo in enumerate(repos, 1):
-            print(f"[{i}/{len(repos)}] Analyzing {repo}...")
+        for i, repo in enumerate(SPECIFIC_REPOS, 1):
+            print(f"[{i}/{len(SPECIFIC_REPOS)}] Analyzing {repo}...")
             try:
                 runs = github_client.get_all_repository_runs(repo, ANALYSIS_DAYS)
                 all_runs.extend(runs)
@@ -92,7 +72,7 @@ def main():
             print("ERROR: No workflow runs found")
             sys.exit(1)
         
-        print(f"Analyzing {len(all_runs)} total workflow runs...")
+        print(f"\nAnalyzing {len(all_runs)} total workflow runs...")
         
         # Perform analysis
         stats = analyzer.analyze_workflows(all_runs)
@@ -111,14 +91,14 @@ def main():
         repositories = list(set(s.repository for s in stats))
         
         html_content = template.render(
-            title=f"{org} - Workflow Performance Dashboard",
+            title="Specific Repositories - Workflow Performance Dashboard",
             charts=charts,
             summary=summary,
             workflows=stats,
             repositories=repositories
         )
         
-        # Save output for GitHub Pages
+        # Save output
         OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
         with open(OUTPUT_PATH, 'w', encoding='utf-8') as f:
             f.write(html_content)
@@ -132,6 +112,9 @@ def main():
                 shutil.rmtree(images_dst)
             shutil.copytree(images_src, images_dst)
             print(f"Copied images to {images_dst}")
+        
+        print(f"Dashboard generated successfully: {OUTPUT_PATH}")
+        print("Open the dashboard in your browser to view the results.")
         
     except Exception as e:
         print(f"ERROR: Error during analysis: {e}")

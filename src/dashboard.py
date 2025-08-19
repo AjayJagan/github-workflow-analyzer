@@ -40,11 +40,11 @@ class DashboardGenerator:
         
         html_content = f"""
         <div style="font-family: 'Segoe UI', Arial, sans-serif; background: white; padding: 25px; border-radius: 10px; border: 1px solid #ddd;">
-            <h3 style="margin-top: 0; color: #333; border-bottom: 2px solid #e74c3c; padding-bottom: 15px; display: flex; align-items: center;">
-                <i class="fas fa-exclamation-triangle" style="color: #e74c3c; margin-right: 10px;"></i>
+            <h3 style="margin-top: 0; color: #151515; border-bottom: 2px solid #c9190b; padding-bottom: 15px; display: flex; align-items: center;">
+                <i class="fas fa-exclamation-triangle" style="color: #c9190b; margin-right: 10px;"></i>
                 Top Problematic Workflows
             </h3>
-            <div style="margin-bottom: 20px; padding: 15px; background: #fff3e0; border-left: 4px solid #ff9800; border-radius: 4px;">
+            <div style="margin-bottom: 20px; padding: 15px; background: #fdf2d0; border-left: 4px solid #f0ab00; border-radius: 4px;">
                 <strong>Found {len(problematic_workflows)} workflows needing attention.</strong> 
                 These workflows are either slow (>10min) and frequent (PR/Push triggered) or extremely slow (>15min).
             </div>
@@ -54,15 +54,15 @@ class DashboardGenerator:
         for i, workflow in enumerate(top_workflows, 1):
             repo_name = workflow.repository.split('/')[-1]
             
-            # Determine priority styling
+            # Determine priority styling (OpenShift colors)
             if workflow.optimization_priority == 'critical':
-                priority_color = "#e74c3c"
-                priority_bg = "#ffebee"
+                priority_color = "#c9190b"  # OpenShift danger color
+                priority_bg = "#faeae8"     # Light danger background
                 priority_icon = "🔴"
                 priority_label = "CRITICAL"
             else:  # high
-                priority_color = "#ff9800"
-                priority_bg = "#fff3e0"
+                priority_color = "#f0ab00"  # OpenShift warning color
+                priority_bg = "#fdf2d0"     # Light warning background
                 priority_icon = "🟠"
                 priority_label = "HIGH"
             
@@ -115,33 +115,69 @@ class DashboardGenerator:
         
         html_content = """
         <div style="font-family: 'Segoe UI', Arial, sans-serif; background: white; padding: 25px; border-radius: 10px; border: 1px solid #ddd;">
-            <h3 style="margin-top: 0; color: #333; border-bottom: 2px solid #2196f3; padding-bottom: 15px; display: flex; align-items: center;">
-                <i class="fas fa-trophy" style="color: #2196f3; margin-right: 10px;"></i>
+            <h3 style="margin-top: 0; color: #151515; border-bottom: 2px solid #06c; padding-bottom: 15px; display: flex; align-items: center;">
+                <i class="fas fa-trophy" style="color: #06c; margin-right: 10px;"></i>
                 Repository Performance Scorecard
             </h3>
             <div style="max-height: 400px; overflow-y: auto; padding-right: 10px; scrollbar-width: thin; scrollbar-color: #e0e0e0 transparent;">
         """
         
-        # Sort repositories by problematic workflow count (descending) for priority
-        sorted_repos = sorted(repo_summary.items(), key=lambda x: x[1]['problematic_workflows'], reverse=True)
+        # Sort repositories by percentage of problematic workflows, then by count (most problematic first)
+        def sort_key(item):
+            repo_name, data = item
+            total = data['total_workflows']
+            problematic = data['problematic_workflows']
+            percentage = (problematic / total * 100) if total > 0 else 0
+            return (-percentage, -problematic)  # Negative for descending order
+        
+        sorted_repos = sorted(repo_summary.items(), key=sort_key)
         
         for repo_name, data in sorted_repos:
             total_workflows = data['total_workflows']
             problematic_workflows = data['problematic_workflows']
             short_name = repo_name.split('/')[-1]
             
+            # Calculate percentage
+            percentage = (problematic_workflows / total_workflows * 100) if total_workflows > 0 else 0
+            
+            # Determine color based on problem severity
+            if percentage >= 50:
+                severity_color = "#c9190b"  # OpenShift danger red
+                severity_bg = "#faeae8"
+                severity_label = "HIGH RISK"
+            elif percentage >= 25:
+                severity_color = "#f0ab00"  # OpenShift warning yellow
+                severity_bg = "#fdf2d0"
+                severity_label = "NEEDS ATTENTION"
+            elif percentage > 0:
+                severity_color = "#6a6e73"  # OpenShift gray
+                severity_bg = "#f0f0f0"
+                severity_label = "MINOR ISSUES"
+            else:
+                severity_color = "#3e8635"  # OpenShift success green
+                severity_bg = "#f3faf2"
+                severity_label = "HEALTHY"
+            
             html_content += f"""
-            <div style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 6px; border: 1px solid #e9ecef;">
+            <div style="margin-bottom: 15px; padding: 15px; background: {severity_bg}; border-radius: 6px; border: 1px solid #e9ecef; border-left: 4px solid {severity_color};">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="flex: 1;">
-                        <h4 style="margin: 0; color: #333; font-size: 1.1em;">{short_name}</h4>
-                        <div style="color: #666; font-size: 0.85em; margin-top: 2px;">{repo_name}</div>
+                        <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                            <h4 style="margin: 0; color: #151515; font-size: 1.1em; margin-right: 10px;">{short_name}</h4>
+                            <span style="background: {severity_color}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7em; font-weight: bold;">
+                                {severity_label}
+                            </span>
+                        </div>
+                        <div style="color: #6a6e73; font-size: 0.85em; margin-top: 2px;">{repo_name}</div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 1.2em; font-weight: bold; color: #333;">
+                        <div style="font-size: 1.4em; font-weight: bold; color: {severity_color}; margin-bottom: 2px;">
+                            {percentage:.0f}%
+                        </div>
+                        <div style="font-size: 0.9em; color: #151515; font-weight: 500;">
                             {problematic_workflows} / {total_workflows}
                         </div>
-                        <div style="font-size: 0.8em; color: #666;">problems / total</div>
+                        <div style="font-size: 0.75em; color: #6a6e73;">problems / total</div>
                     </div>
                 </div>
             </div>
